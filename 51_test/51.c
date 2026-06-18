@@ -67,9 +67,15 @@
 #define LED0_OFF_L    0x08
 #define LED0_OFF_H    0x09
 
-// Flags
-bit ready_to_act = 0;       // Command received flag
-unsigned char gesture_id = 0;  // 0:A(Relax), 1:B(Spread), 2:C(Fist), 3:D(Point), 4:E(ThumbUp)
+// Servo mapping: 0-1:Thumb, 2-3:Index, 4-5:Middle, 6-7:Pinky
+// Test range: adjust these values to find min/max angles for each servo
+#define SERVO_MIN  200   // Minimum PWM (adjust per servo if needed)
+#define SERVO_MAX  400   // Maximum PWM (adjust per servo if needed)
+#define SERVO_CENTER 300 // Neutral position
+
+// Servo-specific min/max (all same initially, tune after testing)
+unsigned short servo_min[8] = {200, 200, 200, 200, 200, 200, 200, 200};
+unsigned short servo_max[8] = {400, 400, 400, 400, 400, 400, 400, 400};
 
 // Function declarations
 void delay_ms(unsigned int ms);
@@ -80,10 +86,8 @@ bit I2C_WaitAck(void);
 void PCA9685_WriteReg(unsigned char reg, unsigned char val);
 void PCA9685_SetPWM(unsigned char channel, unsigned short on, unsigned short off);
 void PCA9685_Init(void);
-void UART1_Init(void);
-void SendByte(unsigned char dat);
-void SendString(unsigned char *str);
 void SetAllServos(unsigned short *pwm_values);
+void SetSingleServo(unsigned char channel, unsigned short off);
 
 // I2C interface pins
 sbit SCL = P3^2;
@@ -195,155 +199,70 @@ void SetAllServos(unsigned short *pwm_values)
     }
 }
 
-// Send one byte via UART
-void SendByte(unsigned char dat)
+// Set a single servo to a specific PWM value
+void SetSingleServo(unsigned char channel, unsigned short off)
 {
-    SBUF = dat;
-    while(!TI);
-    TI = 0;
+    PCA9685_SetPWM(channel, 0, off);
 }
 
-// Send string via UART
-void SendString(unsigned char *str)
+// Test: sweep a single servo between min and max to find its angle range
+void TestSingleServo(unsigned char ch)
 {
-    while(*str)
-    {
-        SendByte(*str++);
-    }
-}
-
-// Initialize UART1
-void UART1_Init(void)
-{
-    SCON = 0x50;       // 8-bit UART, variable baud rate
-    AUXR |= 0x40;      // Timer1 in 1T mode
-    AUXR &= 0xFE;      // Timer1 clock not divided
-    TMOD &= 0x0F;      // Clear Timer1 mode
-    TMOD |= 0x20;      // Timer1 in mode 2 (8-bit auto-reload)
-    TH1 = 0xFA;        // 11.0592MHz, 115200 baud (FA)
-    TL1 = 0xFA;
-    TR1 = 1;           // Start Timer1
-    ES = 1;            // Enable UART interrupt
-    EA = 1;            // Enable global interrupts
-}
-
-// UART1 interrupt handler - single character commands: A(Relax) B(Spread) C(Fist) D(Point) E(ThumbUp)
-void UART1_Isr(void) interrupt 4
-{
-    unsigned char ch;
+    unsigned short val;
     
-    if(RI)
+    // Move servo ch to min → hold
+    SetSingleServo(ch, servo_min[ch]);
+    delay_ms(1500);
+    
+    // Sweep from min to max in steps
+    for(val = servo_min[ch]; val <= servo_max[ch]; val += 10)
     {
-        RI = 0;
-        ch = SBUF;
-        
-        if(ch == 'A')
-        {
-            gesture_id = 0;
-            ready_to_act = 1;
-            SendByte('A');
-            SendByte(' ');
-            SendByte('O');
-            SendByte('K');
-            SendByte('\r');
-            SendByte('\n');
-        }
-        else if(ch == 'B')
-        {
-            gesture_id = 1;
-            ready_to_act = 1;
-            SendByte('B');
-            SendByte(' ');
-            SendByte('O');
-            SendByte('K');
-            SendByte('\r');
-            SendByte('\n');
-        }
-        else if(ch == 'C')
-        {
-            gesture_id = 2;
-            ready_to_act = 1;
-            SendByte('C');
-            SendByte(' ');
-            SendByte('O');
-            SendByte('K');
-            SendByte('\r');
-            SendByte('\n');
-        }
-        else if(ch == 'D')
-        {
-            gesture_id = 3;
-            ready_to_act = 1;
-            SendByte('D');
-            SendByte(' ');
-            SendByte('O');
-            SendByte('K');
-            SendByte('\r');
-            SendByte('\n');
-        }
-        else if(ch == 'E')
-        {
-            gesture_id = 4;
-            ready_to_act = 1;
-            SendByte('E');
-            SendByte(' ');
-            SendByte('O');
-            SendByte('K');
-            SendByte('\r');
-            SendByte('\n');
-        }
+        SetSingleServo(ch, val);
+        delay_ms(300);
     }
     
-    if(TI)
+    // Hold at max
+    delay_ms(1000);
+    
+    // Sweep back from max to min
+    for(val = servo_max[ch]; val >= servo_min[ch]; val -= 10)
     {
-        TI = 0;  // Clear transmit interrupt flag
+        SetSingleServo(ch, val);
+        delay_ms(300);
     }
+    
+    // Back to center
+    SetSingleServo(ch, SERVO_CENTER);
+    delay_ms(500);
 }
 
-// Main program
+// Main program - standalone servo angle tester (no serial needed)
 void main(void)
 {
-    unsigned short relax_pwms[8] = {RELAX_SERVO0, RELAX_SERVO1, RELAX_SERVO2, RELAX_SERVO3,
-                                    RELAX_SERVO4, RELAX_SERVO5, RELAX_SERVO6, RELAX_SERVO7};
-    unsigned short spread_pwms[8] = {SPREAD_SERVO0, SPREAD_SERVO1, SPREAD_SERVO2, SPREAD_SERVO3,
-                                     SPREAD_SERVO4, SPREAD_SERVO5, SPREAD_SERVO6, SPREAD_SERVO7};
-    unsigned short fist_pwms[8] = {FIST_SERVO0, FIST_SERVO1, FIST_SERVO2, FIST_SERVO3,
-                                   FIST_SERVO4, FIST_SERVO5, FIST_SERVO6, FIST_SERVO7};
-    unsigned short point_pwms[8] = {POINT_SERVO0, POINT_SERVO1, POINT_SERVO2, POINT_SERVO3,
-                                    POINT_SERVO4, POINT_SERVO5, POINT_SERVO6, POINT_SERVO7};
-    unsigned short thumbup_pwms[8] = {THUMBUP_SERVO0, THUMBUP_SERVO1, THUMBUP_SERVO2, THUMBUP_SERVO3,
-                                      THUMBUP_SERVO4, THUMBUP_SERVO5, THUMBUP_SERVO6, THUMBUP_SERVO7};
+    unsigned char i;
+    unsigned short neutral[8] = {SERVO_CENTER, SERVO_CENTER, SERVO_CENTER, SERVO_CENTER,
+                                 SERVO_CENTER, SERVO_CENTER, SERVO_CENTER, SERVO_CENTER};
     
     P3M0 = 0x00;
-    P3M1 = 0x00;   // Configure P3 as push-pull
+    P3M1 = 0x00;
     P5M0 = 0x00;
     P5M1 = 0x00;
     
-    I2C_Stop();    // Initialize I2C bus
+    I2C_Stop();
     delay_ms(10);
     PCA9685_Init();
     delay_ms(10);
     
-    // Start in relax position
-    SetAllServos(relax_pwms);
+    // Start: all servos to center
+    SetAllServos(neutral);
+    delay_ms(2000);
     
-    UART1_Init();
-
-    // Command mode: wait for serial commands (A/B/C/D/E)
+    // Test loop: test each servo individually, then repeat
     while(1)
     {
-        if(ready_to_act)
+        for(i = 0; i < 8; i++)
         {
-            ready_to_act = 0;
-            switch(gesture_id)
-            {
-                case 0: SetAllServos(relax_pwms); break;
-                case 1: SetAllServos(spread_pwms); break;
-                case 2: SetAllServos(fist_pwms); break;
-                case 3: SetAllServos(point_pwms); break;
-                case 4: SetAllServos(thumbup_pwms); break;
-                default: break;
-            }
+            TestSingleServo(i);
         }
     }
 }
