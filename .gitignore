@@ -11,6 +11,7 @@ Objects/
 *.bak
 *.dep
 *.uvguix.*
+*.uvgui.*
 *.uvopt
 JLinkLog.txt
 
