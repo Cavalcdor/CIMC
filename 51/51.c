@@ -322,17 +322,16 @@ void main(void)
     
     UART1_Init();
 
-    // Auto mode: switch between relax and fist every 4 seconds.
-    fist_cmd = 0;
-    SetAllServos(relax_pwms);
-
+    // Command mode: wait for serial commands (Fist / Relax)
     while(1)
     {
-        delay_ms(2000);
-        fist_cmd ^= 1;
-        if(fist_cmd)
-            SetAllServos(fist_pwms);
-        else
-            SetAllServos(relax_pwms);
+        if(ready_to_act)
+        {
+            ready_to_act = 0;
+            if(fist_cmd)
+                SetAllServos(fist_pwms);
+            else
+                SetAllServos(relax_pwms);
+        }
     }
 }
