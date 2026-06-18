@@ -1,0 +1,31 @@
+# Keil / C51
+Objects/
+*.obj
+*.lst
+*.crf
+*.lnp
+*.map
+*.m51
+*.plg
+*.htm
+*.bak
+*.dep
+*.uvguix.*
+*.uvopt
+JLinkLog.txt
+
+# Build output
+*.hex
+*.bin
+*.elf
+
+# IDE
+*.uvw
+*.uvproj.*.user
+*.uvopt.*
+.Debug/
+.debug/
+
+# OS
+Thumbs.db
+.DS_Store
