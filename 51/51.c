@@ -220,8 +220,8 @@ void UART1_Init(void)
     AUXR &= 0xFE;      // Timer1 clock not divided
     TMOD &= 0x0F;      // Clear Timer1 mode
     TMOD |= 0x20;      // Timer1 in mode 2 (8-bit auto-reload)
-    TH1 = 0xFA;        // 11.0592MHz, 115200 baud (FA)
-    TL1 = 0xFA;
+    TH1 = 0xFD;        // 11.0592MHz, 115200 baud
+    TL1 = 0xFD;
     TR1 = 1;           // Start Timer1
     ES = 1;            // Enable UART interrupt
     EA = 1;            // Enable global interrupts

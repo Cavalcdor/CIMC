@@ -388,8 +388,8 @@ void UART1_Init(void)
     AUXR &= 0xFE;
     TMOD &= 0x0F;
     TMOD |= 0x20;
-    TH1 = 0xFA;
-    TL1 = 0xFA;
+    TH1 = 0xFD;        // 11.0592MHz, 115200 baud
+    TL1 = 0xFD;
     TR1 = 1;
     ES = 1;
     EA = 1;
