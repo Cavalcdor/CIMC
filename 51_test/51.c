@@ -568,7 +568,7 @@ void UART1_Isr(void) interrupt 4
                 break;
 
             default:
-                // Ignore other chars (CR, LF, etc.)
+                SendString("\r\n?\r\n> ");
                 break;
         }
     }
@@ -608,9 +608,13 @@ void main(void)
     // Init UART
     UART1_Init();
 
-    // Welcome
-    SendString("\r\n=== Servo Tuning Tool ===\r\n");
-    SendString("115200 baud | Send 'h' for help\r\n> ");
+    // Welcome: send 3 times to ensure serial is ready
+    for(i = 0; i < 3; i++)
+    {
+        delay_ms(100);
+        SendString("\r\n=== Servo Tuning Tool ===\r\n");
+        SendString("115200 baud | Send 'h' for help\r\n> ");
+    }
 
     // Idle loop - everything happens in interrupt
     while(1)
