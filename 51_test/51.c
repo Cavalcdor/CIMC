@@ -70,22 +70,27 @@
 // Servo mapping: 0-1:Thumb, 2-3:Index, 4-5:Middle, 6-7:Pinky
 // ===== Interactive Serial Tuning Tool =====
 // Commands over UART (115200 baud):
-//   0-7     Select single servo
-//   f0-f3   Select finger pair (f0=thumb, f1=index, f2=middle, f3=pinky)
-//   +       Increment PWM (single mode) / bend (pair mode: first↑, second↓)
-//   -       Decrement PWM (single mode) / straighten (pair mode: first↓, second↑)
-//   s       Print all 8 servo PWMs
-//   c       Center all servos to 300
+//   0-7     Select servo N (enter single-servo mode)
+//   f0-f3   Select finger pair (enter coupled mode)
+//   i/I     Individual mode: enter/toggle servo within finger pair
+//   b/B     Back to coupled mode (from individual mode)
+//   +       +1 step (single/individual) / bend (coupled: first↑ second↓)
+//   -       -1 step (single/individual) / straighten (coupled: first↓ second↑)
+//   s       Status: print all 8 PWMs
+//   Sxx     Set step directly, e.g. S25 -> step=25
+//   c       Center all servos (300)
+//   n       Cycle step size
+//   a       Auto sweep current finger pair
+//   p       Print current selection
 //   h       Print this help
-//   n       Cycle step: 1 -> 5 -> 10 -> 20 -> 50 -> 1 ...
-//   a       Auto sweep current finger pair (200-400, 10-step)
-//   p       Print current selection info
 
 // ===== State =====
 unsigned short servo_pwms[8] = {300, 300, 300, 300, 300, 300, 300, 300};
 unsigned char selected_servo = 0;
 unsigned char selected_finger = 0;
+unsigned char pair_sub_servo = 0;
 bit single_mode = 1;            // 1=single servo, 0=finger pair
+bit pair_coupled = 1;           // 1=coupled mode in finger pair, 0=individual
 unsigned char step_size = 10;
 
 const unsigned char step_table[5] = {1, 5, 10, 20, 50};
@@ -257,14 +262,17 @@ void SendNum(unsigned short val)
 void PrintHelp(void)
 {
     SendString("\r\n--- Servo Tuning Commands ---\r\n");
-    SendString(" 0-7     Select servo N (single mode)\r\n");
-    SendString(" f0-f3   Select finger pair (0=T 1=I 2=M 3=P)\r\n");
-    SendString(" +       +step (single) / bend (pair: first+ second-)\r\n");
-    SendString(" -       -step (single) / straighten (pair: first- second+)\r\n");
+    SendString(" 0-7     Select servo N (single-servo mode)\r\n");
+    SendString(" f0-f3   Select finger pair (coupled mode)\r\n");
+    SendString(" i       Individual: enter/toggle servo within pair\r\n");
+    SendString(" b       Back to coupled mode (from individual)\r\n");
+    SendString(" +       +step (single/indiv) / bend (coupled)\r\n");
+    SendString(" -       -step (single/indiv) / straighten (coupled)\r\n");
     SendString(" s       Status: print all 8 PWMs\r\n");
+    SendString(" Sxx     Set step, e.g. S25 = step=25\r\n");
     SendString(" c       Center all servos (300)\r\n");
     SendString(" n       Cycle step size\r\n");
-    SendString(" a       Auto sweep selected finger pair\r\n");
+    SendString(" a       Auto sweep finger pair\r\n");
     SendString(" p       Print current selection\r\n");
     SendString(" h       This help\r\n> ");
 }
@@ -279,14 +287,12 @@ void PrintSelection(void)
         SendString("] PWM=");
         SendNum(servo_pwms[selected_servo]);
     }
-    else
+    else if(pair_coupled)
     {
         unsigned char base = selected_finger * 2;
         SendString("F");
         SendByte('0' + selected_finger);
-        SendString(" ");
-        SendString((unsigned char *)finger_labels[selected_finger]);
-        SendString(": S");
+        SendString("] Coupled: S");
         SendByte('0' + base);
         SendString("=");
         SendNum(servo_pwms[base]);
@@ -295,6 +301,16 @@ void PrintSelection(void)
         SendString("=");
         SendNum(servo_pwms[base + 1]);
         SendString("  (+bend/-straighten)");
+    }
+    else
+    {
+        unsigned char base = selected_finger * 2 + pair_sub_servo;
+        SendString("F");
+        SendByte('0' + selected_finger);
+        SendString(".S");
+        SendByte('0' + base);
+        SendString("] PWM=");
+        SendNum(servo_pwms[base]);
     }
     SendString("\r\n> ");
 }
@@ -400,6 +416,8 @@ void UART1_Isr(void) interrupt 4
 {
     unsigned char ch;
     static bit await_f = 0;
+    static unsigned char await_S = 0;  // 0=idle, 1=wait tens, 2=wait ones
+    static unsigned char step_digit = 0;
 
     if(RI)
     {
@@ -414,11 +432,36 @@ void UART1_Isr(void) interrupt 4
             {
                 selected_finger = ch - '0';
                 single_mode = 0;
+                pair_coupled = 1;  // start in coupled mode
                 PrintSelection();
             }
             else
             {
                 SendString("\r\n? ");  // invalid after 'f'
+            }
+            return;
+        }
+
+        // Handle step set prefix: 'S' + 2 digits
+        if(await_S == 1)
+        {
+            if(ch >= '0' && ch <= '9')
+            {
+                step_digit = (ch - '0') * 10;
+                await_S = 2;
+            }
+            else { await_S = 0; }
+            return;
+        }
+        if(await_S == 2)
+        {
+            await_S = 0;
+            if(ch >= '0' && ch <= '9')
+            {
+                step_size = step_digit + (ch - '0');
+                SendString("\r\nStep=");
+                SendNum(step_size);
+                SendString("\r\n> ");
             }
             return;
         }
@@ -430,12 +473,43 @@ void UART1_Isr(void) interrupt 4
             case '4': case '5': case '6': case '7':
                 selected_servo = ch - '0';
                 single_mode = 1;
+                pair_coupled = 1;
                 PrintSelection();
                 break;
 
             case 'f':
             case 'F':
                 await_f = 1;
+                break;
+
+            case 'S':
+                await_S = 1;
+                break;
+
+            case 'I':
+            case 'i':
+                if(!single_mode)
+                {
+                    if(pair_coupled)
+                    {
+                        pair_coupled = 0;
+                        pair_sub_servo = 0;
+                    }
+                    else
+                    {
+                        pair_sub_servo = !pair_sub_servo;
+                    }
+                    PrintSelection();
+                }
+                break;
+
+            case 'B':
+            case 'b':
+                if(!single_mode && !pair_coupled)
+                {
+                    pair_coupled = 1;
+                    PrintSelection();
+                }
                 break;
 
             case '+':
@@ -450,6 +524,22 @@ void UART1_Isr(void) interrupt 4
                     SendByte('0' + selected_servo);
                     SendString("=");
                     SendNum(servo_pwms[selected_servo]);
+                    SendString("\r\n> ");
+                }
+                else if(!pair_coupled)
+                {
+                    unsigned char idx = selected_finger * 2 + pair_sub_servo;
+                    if(servo_pwms[idx] + step_size <= 500)
+                    {
+                        servo_pwms[idx] += step_size;
+                        ApplyServo(idx);
+                    }
+                    SendString("\r\nF");
+                    SendByte('0' + selected_finger);
+                    SendString(".S");
+                    SendByte('0' + idx);
+                    SendString("=");
+                    SendNum(servo_pwms[idx]);
                     SendString("\r\n> ");
                 }
                 else
@@ -497,6 +587,22 @@ void UART1_Isr(void) interrupt 4
                     SendNum(servo_pwms[selected_servo]);
                     SendString("\r\n> ");
                 }
+                else if(!pair_coupled)
+                {
+                    unsigned char idx = selected_finger * 2 + pair_sub_servo;
+                    if(servo_pwms[idx] >= step_size)
+                    {
+                        servo_pwms[idx] -= step_size;
+                        ApplyServo(idx);
+                    }
+                    SendString("\r\nF");
+                    SendByte('0' + selected_finger);
+                    SendString(".S");
+                    SendByte('0' + idx);
+                    SendString("=");
+                    SendNum(servo_pwms[idx]);
+                    SendString("\r\n> ");
+                }
                 else
                 {
                     unsigned char base = selected_finger * 2;
@@ -529,7 +635,6 @@ void UART1_Isr(void) interrupt 4
                 break;
 
             case 's':
-            case 'S':
                 PrintStatus();
                 break;
 
