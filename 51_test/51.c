@@ -515,7 +515,7 @@ void UART1_Isr(void) interrupt 4
             case '+':
                 if(single_mode)
                 {
-                    if(servo_pwms[selected_servo] + step_size <= 500)
+                    if(servo_pwms[selected_servo] + step_size <= 600)
                     {
                         servo_pwms[selected_servo] += step_size;
                         ApplyServo(selected_servo);
@@ -529,7 +529,7 @@ void UART1_Isr(void) interrupt 4
                 else if(!pair_coupled)
                 {
                     unsigned char idx = selected_finger * 2 + pair_sub_servo;
-                    if(servo_pwms[idx] + step_size <= 500)
+                    if(servo_pwms[idx] + step_size <= 600)
                     {
                         servo_pwms[idx] += step_size;
                         ApplyServo(idx);
@@ -546,7 +546,7 @@ void UART1_Isr(void) interrupt 4
                 {
                     unsigned char base = selected_finger * 2;
                     bit changed = 0;
-                    if(servo_pwms[base] + step_size <= 500)
+                    if(servo_pwms[base] + step_size <= 600)
                     {
                         servo_pwms[base] += step_size;
                         ApplyServo(base);
@@ -613,7 +613,7 @@ void UART1_Isr(void) interrupt 4
                         ApplyServo(base);
                         changed = 1;
                     }
-                    if(servo_pwms[base + 1] + step_size <= 500)
+                    if(servo_pwms[base + 1] + step_size <= 600)
                     {
                         servo_pwms[base + 1] += step_size;
                         ApplyServo(base + 1);

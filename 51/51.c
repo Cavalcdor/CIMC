@@ -6,54 +6,54 @@
 // PWM value = pulse width (us) / (20ms/4096) = pulse width (us) / 4.8828125
 // Adjusted to a more moderate 230-370 range for safer motion.
 
-#define RELAX_SERVO0  240
-#define RELAX_SERVO1  370
+#define RELAX_SERVO0  280
+#define RELAX_SERVO1  340
 #define RELAX_SERVO2  370
-#define RELAX_SERVO3  230
-#define RELAX_SERVO4  370
-#define RELAX_SERVO5  240
-#define RELAX_SERVO6  370
-#define RELAX_SERVO7  240
+#define RELAX_SERVO3  210
+#define RELAX_SERVO4  290
+#define RELAX_SERVO5  310
+#define RELAX_SERVO6  350
+#define RELAX_SERVO7  250
 
 // B - Spread (摊开) - all fingers open
-#define SPREAD_SERVO0  240
-#define SPREAD_SERVO1  370
-#define SPREAD_SERVO2  370
-#define SPREAD_SERVO3  230
-#define SPREAD_SERVO4  370
-#define SPREAD_SERVO5  240
-#define SPREAD_SERVO6  370
-#define SPREAD_SERVO7  240
+#define SPREAD_SERVO0  310
+#define SPREAD_SERVO1  500
+#define SPREAD_SERVO2  470
+#define SPREAD_SERVO3  110
+#define SPREAD_SERVO4  480
+#define SPREAD_SERVO5  120
+#define SPREAD_SERVO6  440
+#define SPREAD_SERVO7  160
 
 // C - Fist (握拳)
-#define FIST_SERVO0   360
-#define FIST_SERVO1   230   
-#define FIST_SERVO2   280   
-#define FIST_SERVO3   360   
-#define FIST_SERVO4   240   
-#define FIST_SERVO5   360   
-#define FIST_SERVO6   240   
-#define FIST_SERVO7   360   
+#define FIST_SERVO0   280
+#define FIST_SERVO1   210   
+#define FIST_SERVO2   260   
+#define FIST_SERVO3   420   
+#define FIST_SERVO4   180   
+#define FIST_SERVO5   440   
+#define FIST_SERVO6   200   
+#define FIST_SERVO7   470   
 
 // D - Point Index (伸食指) - only index extended
-#define POINT_SERVO0   360
-#define POINT_SERVO1   230
-#define POINT_SERVO2   370
-#define POINT_SERVO3   230
-#define POINT_SERVO4   240
-#define POINT_SERVO5   360
-#define POINT_SERVO6   240
-#define POINT_SERVO7   360
+#define POINT_SERVO0   280
+#define POINT_SERVO1   210
+#define POINT_SERVO2   500
+#define POINT_SERVO3   110
+#define POINT_SERVO4   180
+#define POINT_SERVO5   440
+#define POINT_SERVO6   200
+#define POINT_SERVO7   470
 
 // E - Thumb Up (伸拇指) - only thumb extended
-#define THUMBUP_SERVO0  240
-#define THUMBUP_SERVO1  370
-#define THUMBUP_SERVO2  280
-#define THUMBUP_SERVO3  360
-#define THUMBUP_SERVO4  240
-#define THUMBUP_SERVO5  360
-#define THUMBUP_SERVO6  240
-#define THUMBUP_SERVO7  360
+#define THUMBUP_SERVO0  310
+#define THUMBUP_SERVO1  500
+#define THUMBUP_SERVO2  260
+#define THUMBUP_SERVO3  420
+#define THUMBUP_SERVO4  180
+#define THUMBUP_SERVO5  440
+#define THUMBUP_SERVO6  200
+#define THUMBUP_SERVO7  470
 
 // PCA9685 I2C address (A0-A5 selectable)
 #define PCA9685_ADDR  0x80   // 8-bit address, shifted, actual 7-bit is 0x40
@@ -195,12 +195,14 @@ void SetAllServos(unsigned short *pwm_values)
     }
 }
 
-// Send one byte via UART
+// Send one byte via UART (disable ES to avoid ISR clearing TI before while loop sees it)
 void SendByte(unsigned char dat)
 {
+    ES = 0;
     SBUF = dat;
     while(!TI);
     TI = 0;
+    ES = 1;
 }
 
 // Send string via UART
@@ -212,12 +214,12 @@ void SendString(unsigned char *str)
     }
 }
 
-// Initialize UART1
+// Initialize UART1 (115200 baud @ 11.0592MHz)
 void UART1_Init(void)
 {
     SCON = 0x50;       // 8-bit UART, variable baud rate
-    AUXR |= 0x40;      // Timer1 in 1T mode
-    AUXR &= 0xFE;      // Timer1 clock not divided
+    AUXR |= 0x40;      // Timer1 in 1T mode (bit6 T1x12 = 1)
+    AUXR &= 0xFE;      // UART1 selects Timer1 as baud rate generator
     TMOD &= 0x0F;      // Clear Timer1 mode
     TMOD |= 0x20;      // Timer1 in mode 2 (8-bit auto-reload)
     TH1 = 0xFD;        // 11.0592MHz, 115200 baud
@@ -228,6 +230,8 @@ void UART1_Init(void)
 }
 
 // UART1 interrupt handler - single character commands: A(Relax) B(Spread) C(Fist) D(Point) E(ThumbUp)
+// NOTE: ISR only stores the received char and sets a flag.
+// Serial response is handled in main loop to avoid reentrancy issues (WARNING L15).
 void UART1_Isr(void) interrupt 4
 {
     unsigned char ch;
@@ -237,60 +241,14 @@ void UART1_Isr(void) interrupt 4
         RI = 0;
         ch = SBUF;
         
-        if(ch == 'A')
+        if(ch >= 'A' && ch <= 'E' && !ready_to_act)
         {
-            gesture_id = 0;
+            gesture_id = ch - 'A';
             ready_to_act = 1;
-            SendByte('A');
-            SendByte(' ');
-            SendByte('O');
-            SendByte('K');
-            SendByte('\r');
-            SendByte('\n');
         }
-        else if(ch == 'B')
+        else
         {
-            gesture_id = 1;
-            ready_to_act = 1;
-            SendByte('B');
-            SendByte(' ');
-            SendByte('O');
-            SendByte('K');
-            SendByte('\r');
-            SendByte('\n');
-        }
-        else if(ch == 'C')
-        {
-            gesture_id = 2;
-            ready_to_act = 1;
-            SendByte('C');
-            SendByte(' ');
-            SendByte('O');
-            SendByte('K');
-            SendByte('\r');
-            SendByte('\n');
-        }
-        else if(ch == 'D')
-        {
-            gesture_id = 3;
-            ready_to_act = 1;
-            SendByte('D');
-            SendByte(' ');
-            SendByte('O');
-            SendByte('K');
-            SendByte('\r');
-            SendByte('\n');
-        }
-        else if(ch == 'E')
-        {
-            gesture_id = 4;
-            ready_to_act = 1;
-            SendByte('E');
-            SendByte(' ');
-            SendByte('O');
-            SendByte('K');
-            SendByte('\r');
-            SendByte('\n');
+            // Unknown command or already busy - ignore silently in ISR
         }
     }
     
@@ -315,7 +273,7 @@ void main(void)
                                       THUMBUP_SERVO4, THUMBUP_SERVO5, THUMBUP_SERVO6, THUMBUP_SERVO7};
     
     P3M0 = 0x00;
-    P3M1 = 0x00;   // Configure P3 as push-pull
+    P3M1 = 0x00;   // Configure P3 as quasi-bidirectional (standard 8051 mode)
     P5M0 = 0x00;
     P5M1 = 0x00;
     
@@ -324,24 +282,30 @@ void main(void)
     PCA9685_Init();
     delay_ms(10);
     
+    UART1_Init();
+    
     // Start in relax position
     SetAllServos(relax_pwms);
     
-    UART1_Init();
+    SendString("\r\n=== Hand Gesture Controller Ready ===\r\n");
+    SendString("Commands: A=Relax B=Spread C=Fist D=Point E=ThumbUp\r\n");
+    SendString("Current: A > Relax (放松)\r\n");
 
     // Command mode: wait for serial commands (A/B/C/D/E)
+    // NOTE: All SendString calls are in main loop (not ISR) to avoid WARNING L15.
     while(1)
     {
         if(ready_to_act)
         {
             ready_to_act = 0;
+            SendString("Executing... ");
             switch(gesture_id)
             {
-                case 0: SetAllServos(relax_pwms); break;
-                case 1: SetAllServos(spread_pwms); break;
-                case 2: SetAllServos(fist_pwms); break;
-                case 3: SetAllServos(point_pwms); break;
-                case 4: SetAllServos(thumbup_pwms); break;
+                case 0: SetAllServos(relax_pwms); SendString("A > Relax (放松)\r\n"); break;
+                case 1: SetAllServos(spread_pwms); SendString("B > Spread (摊开)\r\n"); break;
+                case 2: SetAllServos(fist_pwms); SendString("C > Fist (握拳)\r\n"); break;
+                case 3: SetAllServos(point_pwms); SendString("D > Point (伸食指)\r\n"); break;
+                case 4: SetAllServos(thumbup_pwms); SendString("E > ThumbUp (伸拇指)\r\n"); break;
                 default: break;
             }
         }

@@ -1,0 +1,91 @@
+[2026-06-18 20:34:50] : Begin
+--------------------
+*MCUTYPE* : STC8G1K08-8PIN
+*ISPMODE* : 1
+*ISPRESULT* : 5
+--------------------
+[2026-06-18 20:34:55] : End
+--------------------------------------------------
+[2026-06-18 20:36:49] : Begin
+--------------------
+*MCUTYPE* : STC8G1K08-8PIN
+*MCUID* : F7A4C43B1A410B
+*FILENAME* : D:\GitHub\CIMC\51_test\Objects\51.hex
+*FILETIME* : 2026年06月18日, 20:36:34
+*FILESIZE* : 3088 (0x000C10)
+*CODESIZE* : 1024 (0x000400)
+*CHECKSUM* : 0x0001F5B7
+*ISPMODE* : 2
+*ISPRESULT* : 0
+--------------------
+[2026-06-18 20:36:55] : End
+--------------------------------------------------
+[2026-06-18 21:40:12] : Begin
+--------------------
+*MCUTYPE* : STC8G1K08-8PIN
+*MCUID* : F7A4C43B1A410B
+*FILENAME* : D:\GitHub\CIMC\51_test\Objects\51.hex
+*FILETIME* : 2026年06月18日, 21:40:01
+*FILESIZE* : 9369 (0x002499)
+*CODESIZE* : 3210 (0x000C8A)
+*CHECKSUM* : 0x0005037C
+*ISPMODE* : 2
+*ISPRESULT* : 0
+--------------------
+[2026-06-18 21:40:21] : End
+--------------------------------------------------
+[2026-06-18 21:41:39] : Begin
+--------------------
+*MCUTYPE* : STC8G1K08-8PIN
+*FILENAME* : D:\GitHub\CIMC\51_test\Objects\51.hex
+*FILETIME* : 2026年06月18日, 21:40:01
+*FILESIZE* : 9369 (0x002499)
+*CODESIZE* : 3210 (0x000C8A)
+*CHECKSUM* : 0x0005037C
+*ISPMODE* : 1
+*ISPRESULT* : 5
+--------------------
+[2026-06-18 21:41:48] : End
+--------------------------------------------------
+[2026-06-18 21:51:08] : Begin
+--------------------
+*MCUTYPE* : STC8G1K08-8PIN
+*MCUID* : F7A4C43B1A410B
+*FILENAME* : D:\GitHub\CIMC\51_test\Objects\51.hex
+*FILETIME* : 2026年06月18日, 21:50:55
+*FILESIZE* : 9490 (0x002512)
+*CODESIZE* : 3251 (0x000CB3)
+*CHECKSUM* : 0x00051D66
+*ISPMODE* : 2
+*ISPRESULT* : 0
+--------------------
+[2026-06-18 21:51:14] : End
+--------------------------------------------------
+[2026-06-18 22:02:04] : Begin
+--------------------
+*MCUTYPE* : STC8G1K08-8PIN
+*MCUID* : F7A4C43B1A410B
+*FILENAME* : D:\GitHub\CIMC\51_test\Objects\51.hex
+*FILETIME* : 2026年06月18日, 22:01:53
+*FILESIZE* : 10991 (0x002AEF)
+*CODESIZE* : 3761 (0x000EB1)
+*CHECKSUM* : 0x0005BC92
+*ISPMODE* : 2
+*ISPRESULT* : 0
+--------------------
+[2026-06-18 22:02:10] : End
+--------------------------------------------------
+[2026-06-18 22:11:32] : Begin
+--------------------
+*MCUTYPE* : STC8G1K08-8PIN
+*MCUID* : F7A4C43B1A410B
+*FILENAME* : D:\GitHub\CIMC\51_test\Objects\51.hex
+*FILETIME* : 2026年06月18日, 22:10:47
+*FILESIZE* : 11016 (0x002B08)
+*CODESIZE* : 3767 (0x000EB7)
+*CHECKSUM* : 0x0005C232
+*ISPMODE* : 2
+*ISPRESULT* : 0
+--------------------
+[2026-06-18 22:11:38] : End
+--------------------------------------------------
